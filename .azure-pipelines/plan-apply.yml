@@ -7,7 +7,7 @@ variables:
 - group: vg-landingzone
 
 pool:
-  name: SelfHosted
+  name: TLKCloudPool
 
 stages:
 # -------- PLAN --------
