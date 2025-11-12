@@ -4,7 +4,7 @@ pr:
   branches: { include: ['*'] }
 
 pool:
-  name: TLKCloudPool
+  name: TLKCloudPool   # your self-hosted agent pool (bash enabled)
 
 variables:
   LOCATION: eastus
@@ -12,7 +12,7 @@ variables:
   TF_STATE_SA: tfstatestorage88kt79         # your existing SA name
   TF_STATE_CONT: tfstate
   TF_STATE_KEY: landingzone/dev.tfstate
-  #MG_ID: ba2303f3-2277-44e6-b32f-b346f5736dcc # your MG id, if used
+  # MG_ID: ba2303f3-2277-44e6-b32f-b346f5736dcc # example MG id if you need it
 
 steps:
 # 1) Pull SPN creds from the service connection and publish as variables
@@ -24,13 +24,14 @@ steps:
     addSpnToEnvironment: true
     scriptLocation: inlineScript
     inlineScript: |
+      set -euo pipefail
       echo "##vso[task.setvariable variable=ARM_CLIENT_ID]$servicePrincipalId"
       echo "##vso[task.setvariable variable=ARM_TENANT_ID]$tenantId"
       echo "##vso[task.setvariable variable=ARM_SUBSCRIPTION_ID]$subscriptionId"
       # mark secret:
       echo "##vso[task.setvariable variable=ARM_CLIENT_SECRET;issecret=true]$servicePrincipalKey"
 
-# (optional) ensure backend exists – uses the same service connection session
+# 2) Ensure backend exists – uses the same service connection session
 - task: AzureCLI@2
   displayName: Ensure tfstate storage exists
   inputs:
@@ -38,31 +39,41 @@ steps:
     scriptType: bash
     scriptLocation: inlineScript
     inlineScript: |
-      az group create -n $(TF_BACKEND_RG) -l $(LOCATION)
-      if ! az storage account show -n $(TF_STATE_SA) -g $(TF_BACKEND_RG) >/dev/null 2>&1; then
-        az storage account create -n $(TF_STATE_SA) -g $(TF_BACKEND_RG) -l $(LOCATION) --sku Standard_LRS
+      set -euo pipefail
+      az group create -n "$(TF_BACKEND_RG)" -l "$(LOCATION)"
+      if ! az storage account show -n "$(TF_STATE_SA)" -g "$(TF_BACKEND_RG)" >/dev/null 2>&1; then
+        az storage account create -n "$(TF_STATE_SA)" -g "$(TF_BACKEND_RG)" -l "$(LOCATION)" --sku Standard_LRS
       fi
-      az storage container create --account-name $(TF_STATE_SA) --name $(TF_STATE_CONT) || true
+      # Use AAD to create the container (no key required on modern accounts)
+      az storage container create --account-name "$(TF_STATE_SA)" --name "$(TF_STATE_CONT)" --auth-mode login >/dev/null 2>&1 || true
 
-# 2) Terraform fmt / init / validate / plan
-- script: |
+# 3) Terraform fmt / init / validate / plan (Bash step)
+- bash: |
+    set -euo pipefail
+
+    echo "== Terraform version =="
     terraform -version
+
+    echo "== FMT check =="
     terraform fmt -check -recursive
 
-    terraform init \
+    TF_DIR="$(System.DefaultWorkingDirectory)/terraform"
+
+    echo "== INIT backend =="
+    terraform -chdir="$TF_DIR" init -input=false \
       -backend-config="resource_group_name=$(TF_BACKEND_RG)" \
       -backend-config="storage_account_name=$(TF_STATE_SA)" \
       -backend-config="container_name=$(TF_STATE_CONT)" \
       -backend-config="key=$(TF_STATE_KEY)"
 
-    terraform validate
+    echo "== VALIDATE =="
+    terraform -chdir="$TF_DIR" validate
 
-    terraform plan \
+    echo "== PLAN =="
+    terraform -chdir="$TF_DIR" plan -input=false \
       -var "location=$(LOCATION)" \
-      #-var "management_group_id=$(MG_ID)" \
       -out tfplan.out
-  displayName: Terraform validate + plan
-  workingDirectory: $(System.DefaultWorkingDirectory)/terraform
+  displayName: Terraform validate + plan (bash)
   env:
     ARM_CLIENT_ID: $(ARM_CLIENT_ID)
     ARM_CLIENT_SECRET: $(ARM_CLIENT_SECRET)
