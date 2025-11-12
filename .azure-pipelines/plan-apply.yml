@@ -85,6 +85,7 @@ stages:
   jobs:
   - job: wait
     displayName: "Approve to apply"
+    pool: server
     steps:
     - task: ManualValidation@0
       timeoutInMinutes: 1440
