@@ -8,17 +8,18 @@ This document provides a detailed view of the architecture implemented in this l
 
 The environment is structured into multiple Management Groups (MGs) to align with CAF and provide clean separation of duties:
 
+<pre>
 Tenant Root Group
 │
 ├── Platform (MG)
-│ ├── Identity (MG)
-│ ├── Management (MG)
-│ └── Connectivity (MG)
+│   ├── Identity (MG)
+│   ├── Management (MG)
+│   └── Connectivity (MG)
 │
 └── Landing Zones (MG)
-├── Corp (MG)
-└── Sandbox (MG)
-
+    ├── Corp (MG)
+    └── Sandbox (MG)
+</pre>
 
 ### Purpose of each MG:
 
