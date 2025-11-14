@@ -105,14 +105,19 @@ Configured via `backend.tf`.
 
 ## 6. High-Level Diagram
 
-```markdown
 <details>
-<summary>📊 View Interactive Architecture Diagram</summary>
+  <summary>📊 View Interactive Architecture Diagram</summary>
 
-Launch Interactive Diagram
+  <!-- GitHub Pages interactive diagram -->
+  <p>
+    👉 Open the interactive diagram here:  
+    <a href="https://tlkone.github.io/Azurearchitecturediagram/" target="_blank">
+      https://tlkone.github.io/Azurearchitecturediagram/
+    </a>
+  </p>
 
 </details>
-```
+
 
 ---
 
